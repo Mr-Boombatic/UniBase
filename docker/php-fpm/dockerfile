@@ -1,0 +1,31 @@
+FROM php:8.1-fpm
+ARG TIMEZONE=Europe/Moscow
+
+# RUN apt update && apt-get install -y libpng-dev
+# RUN apt install -y openssl git unzip mc vim curl \
+#     libwebp-dev libjpeg62-turbo-dev libxpm-dev  libjpeg-dev libpng-dev libfreetype6-dev \
+#     libmemcached-dev libz-dev libpq-dev libssl-dev libmcrypt-dev \
+#     jpegoptim wget gnupg
+
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Set timezone
+RUN ln -snf /usr/share/zoneinfo/${TIMEZONE} /etc/localtime && echo ${TIMEZONE} > /etc/timezone
+RUN printf '[PHP]\ndate.timezone = "%s"\n', ${TIMEZONE} > /usr/local/etc/php/conf.d/tzone.ini
+
+# RUN docker-php-ext-configure gd \
+# #    --enable-gd-native-ttf \
+#     --with-gd \
+#     --with-webp-dir \
+#     --with-jpeg-dir=/usr/lib \
+#     --with-png-dir \
+#     --with-zlib-dir \
+#     --with-xpm-dir \
+#     --with-freetype-dir=/usr/include/freetype2
+
+RUN docker-php-ext-install pdo pdo_mysql
+
+COPY php.ini ${PHP_INI_DIR}/php.ini
+
+WORKDIR /var/www/symfony
