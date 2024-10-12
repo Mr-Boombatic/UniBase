@@ -1,0 +1,41 @@
+version: '3'
+
+x-db-env: &db-env
+  MYSQL_HOST: ${MYSQL_HOST}
+  MYSQL_PORT: ${MYSQL_PORT}
+  MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+  MYSQL_DATABASE: ${MYSQL_DATABASE}
+  MYSQL_USER: ${MYSQL_USER}
+  MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+services:
+  fpm:
+    build:
+      context: ./docker/php-fpm
+      dockerfile: Dockerfile
+    environment:
+      <<: *db-env
+    volumes:
+      - './app:/var/www/html'
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - 80:80
+    volumes:
+      - './docker/nginx/conf.d:/etc/nginx/conf.d'
+      - './app/public:/var/www/html/public'
+
+  db:
+    image: mysql:8
+    ports:
+      - 3306:3306
+    volumes:
+      - database:/var/lib/mysql
+    environment:
+      <<: *db-env
+
+volumes:
+  database:
+  esdata1:
+    driver: local
