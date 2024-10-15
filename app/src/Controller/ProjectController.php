@@ -53,16 +53,22 @@ class ProjectController extends AbstractController
     ): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
+        if (!isset($data['workers']) && !is_array($data['workers'] && count($data['workers']) > 0)) {
+            return $this->json(['message' => "Json must have field 'workers' and at least one worker."], );
+        }
+
         try {
             $workers = $workerService->getWorkers($data['workers']);
             $pj = $pjService->getProject($projectId);
+
+            $pjService->assignWorkers($pj, $workers);
         } catch (\Exception $e) {
             return $this->json(['message' => $e->getMessage()]);
         }
 
-        $pjService->assignWorkers($pj, $workers);
         return $this->json([
-            'message' => 'The workers was added to the project (' . $pj->getName() . ') !'
+            'message' => 'The workers (' . implode(", ", array_map(function ($worker) {
+                    return $worker->getFullname(); }, $workers))  . ' was added to the project (' . $pj->getName() . ') !'
         ]);
     }
 
@@ -75,16 +81,22 @@ class ProjectController extends AbstractController
     ): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
+        if (!isset($data['workers']) && !is_array($data['workers'] && count($data['workers']) > 0)) {
+            return $this->json(['message' => "Json must have field 'workers' and at least one worker."], );
+        }
+
         try {
             $workers = $workerService->getWorkers($data['workers']);
             $pj = $pjService->getProject($projectId);
+
+            $pjService->removeWorkers($pj, $workers);
         } catch (\Exception $e) {
             return $this->json(['message' => $e->getMessage()]);
         }
 
-        $pjService->removeWorkers($pj, $workers);
         return $this->json([
-            'message' => 'The workers was removed from the project (' . $pj->getName() . ') !'
+            'message' => 'The workers (' . implode(", ", array_map(function ($worker) {
+                    return $worker->getFullname(); }, $workers))  . ' was removed from the project (' . $pj->getName() . ') !'
         ]);
     }
 }

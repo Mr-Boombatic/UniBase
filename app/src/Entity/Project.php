@@ -17,18 +17,10 @@ class Project
     private ?int $id = null;
 
     #[Assert\NotBlank]
-    #[Assert\Regex(
-        pattern: '/^\p{Lu}\p{Ll}+$/u',
-        message: 'The project name must begin with a capital letter and contain only alphabetic characters.'
-    )]
     #[ORM\Column(length: 255, unique: true)]
     private ?string $name = null;
 
     #[Assert\NotBlank]
-    #[Assert\Regex(
-        pattern: '/^\p{Lu}\p{Ll}+$/u',
-        message: "The buyer's name must begin with a capital letter and contain only alphabetic characters."
-    )]
     #[ORM\Column(length: 255)]
     private ?string $customer = null;
 

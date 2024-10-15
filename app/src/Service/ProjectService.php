@@ -71,15 +71,22 @@ class ProjectService
 
     public function assignWorkers(Project $pj, array $workers)
     {
+        $alreadAddedWorkers = [];
         foreach ($workers as $worker) {
-            if ($pj->getWorkers()->contains($worker))
+            if ($pj->getWorkers()->contains($worker)) {
+                array_push($alreadAddedWorkers, $worker);
                 continue;
+            }
 
             $pj->addWorker($worker);
         }
 
         $this->entityManager->persist($pj);
         $this->entityManager->flush();
+
+        if (count($alreadAddedWorkers) > 0) {
+            throw new \Exception("Workers have been added: " . implode(", ", $alreadAddedWorkers));
+        }
     }
 
     public function getProject ($id)
@@ -93,14 +100,21 @@ class ProjectService
 
     public function removeWorkers($pj, array $workers)
     {
-        foreach ($workers as $worker) {
-            if ($pj->getWorkers()->contains($worker))
-                continue;
+            $alreadyRemovedWorkers = [];
+            foreach ($workers as $worker) {
+                if ($pj->getWorkers()->contains($worker)) {
+                    array_push($alreadyRemovedWorkers, $worker->getFullname());
+                    continue;
+                }
 
-            $pj->removeWorker($worker);
-        }
+                $pj->removeWorker($worker);
+            }
 
-        $this->entityManager->persist($pj);
-        $this->entityManager->flush();
+            $this->entityManager->persist($pj);
+            $this->entityManager->flush();
+
+            if (count($alreadyRemovedWorkers) > 0) {
+                throw new \Exception("Workers have been removed: " . implode(", ", $alreadyRemovedWorkers));
+            }
     }
 }
