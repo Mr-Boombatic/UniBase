@@ -10,7 +10,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class WorkerController extends AbstractController
 {
-    #[Route('/create-worker', name: 'create_worker', methods: ['POST'])]
+    #[Route('/api/create-worker', name: 'create_worker', methods: ['POST'])]
     public function create(
         Request $request,
         WorkerService $workerService

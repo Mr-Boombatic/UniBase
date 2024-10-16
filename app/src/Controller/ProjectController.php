@@ -8,10 +8,23 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\Request;
+use OpenApi\Attributes as OA;
+use Nelmio\ApiDocBundle\Annotation\Model;
+use App\Entity\Project;
 
 class ProjectController extends AbstractController
 {
-    #[Route('/create-project', name: 'create_project', methods: ['POST'])]
+
+    #[OA\Response(
+        response: 201,
+        description: 'Project is created',
+    )]
+    #[OA\Response(
+        response: 400,
+        description: 'Incorrect fields composition or type or project with such name already have been created.',
+    )]
+    #[OA\RequestBody(content: new Model(type: Project::class, groups: ["create_project"]))]
+    #[Route('/api/create-project', name: 'create_project', methods: ['POST'])]
     public function create (
         Request        $request,
         ProjectService $pjService
@@ -25,7 +38,16 @@ class ProjectController extends AbstractController
         ]);
     }
 
-    #[Route('/close-project', name: 'close_project', methods: ['PUT'])]
+    #[OA\Response(
+        response: 200,
+        description: 'Project is closed.',
+    )]
+    #[OA\Response(
+        response: 400,
+        description: 'Project with name isn\'t created or the name isn\'t passed',
+    )]
+    #[OA\RequestBody(content: new Model(type: Project::class, groups: ["close_project"]))]
+    #[Route('/api/close-project', name: 'close_project',methods: ['PUT'])]
     public function close (
         Request        $request,
         ProjectService $pjService
@@ -44,7 +66,7 @@ class ProjectController extends AbstractController
         ]);
     }
 
-    #[Route('/projects/{projectId}/add_workers', name: 'add_workers', methods: ['PUT'])]
+    #[Route('/api/projects/{projectId}/add_workers', name: 'add_workers', methods: ['PUT'])]
     public function addWorkers(
         int $projectId,
         Request $request,
@@ -72,7 +94,7 @@ class ProjectController extends AbstractController
         ]);
     }
 
-    #[Route('/project/{projectId}/remove_workers', name: 'remove_workers', methods: ['PUT'])]
+    #[Route('/api/project/{projectId}/remove_workers', name: 'remove_workers', methods: ['PUT'])]
     public function removeWorker(
         int $projectId,
         Request $request,

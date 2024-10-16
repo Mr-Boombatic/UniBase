@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ProjectRepository::class)]
 class Project
@@ -16,20 +17,24 @@ class Project
     #[ORM\Column]
     private ?int $id = null;
 
+    #[Groups(['close_project', 'create_project'])]
     #[Assert\NotBlank]
     #[ORM\Column(length: 255, unique: true)]
     private ?string $name = null;
 
+    #[Groups(['create_project'])]
     #[Assert\NotBlank]
     #[ORM\Column(length: 255)]
     private ?string $customer = null;
 
+    #[Groups(['close_project'])]
     #[ORM\Column]
     private ?bool $isClosed = false;
 
     /**
      * @var Collection<int, Worker>
      */
+    #[Groups(['change_composition_of_workers'])]
     #[ORM\ManyToMany(targetEntity: Worker::class, inversedBy: 'workers')]
     private Collection $workers;
 
