@@ -32,8 +32,14 @@ class ProjectController extends AbstractController
             response: 201,
             description: 'Project is created.'),
         OA\Response(
+            response: 409,
+            description: 'Project with name already exists.'),
+        OA\Response(
             response: 400,
-            description: 'User isn\'t created'),
+            description: 'Some fields dosn\'t exist or/and have invalid type.'),
+        OA\Response(
+            response: 422,
+            description: 'Validation error.'),
     ]
     #[Route('/api/create-project', name: 'create_project', methods: ['POST'])]
     public function create (
