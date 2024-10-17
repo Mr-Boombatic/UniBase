@@ -4,6 +4,7 @@ namespace App\Service;
 
 use App\Entity\Project;
 use App\Entity\Worker;
+use http\Exception\InvalidArgumentException;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -26,31 +27,28 @@ class ProjectService
         $newPj = new Project();
 
         if (array_key_exists('name', $data) && gettype($data['name']) === 'string') {
-            $pj = $this->entityManager->getRepository(Project::class)->findOneBy(
-                ['name' => $data['name']]);
+            $pj = $this->entityManager->getRepository(Project::class)->findOneBy(['name' => $data['name']]);
+
             if ($pj <> null) {
-                return "The project with such name has already been created.";
+                throw new \InvalidArgumentException("The project with such name has already been created.", 409);
             }
         } else {
-            return "'name' parameter isn't passed.";
+            throw new \InvalidArgumentException("'name' parameter isn't passed.", 400);
         }
 
         if (!(array_key_exists('customer', $data) && gettype($data['customer']) === 'string'))
-            return "'customer' parameter isn't passed.";
+            throw new \Exception("'customer' parameter isn't passed.", 400);
 
         $newPj->setName($data['name']);
         $newPj->setCustomer($data['customer']);
 
-        $errors = $this->validator->validate($newPj);
-        if (count($errors) > 0) {
-            return (string)$errors;
+        // валидация оказалась не нужна
+        $validationErrors = $this->validator->validate($newPj);
+        if (count($validationErrors) > 0) {
+            throw new \Exception('Validation exceptions: ' . (string)$validationErrors . "\n", 422);
         } else {
-            try {
-                $this->entityManager->persist($newPj);
-                $this->entityManager->flush();
-            } catch (\Exception $exception) {
-                return 'Caught exception: ' . $exception->getMessage() . "\n";
-            }
+            $this->entityManager->persist($newPj);
+            $this->entityManager->flush();
         }
     }
 

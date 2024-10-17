@@ -11,31 +11,48 @@ use Symfony\Component\HttpFoundation\Request;
 use OpenApi\Attributes as OA;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use App\Entity\Project;
+use Symfony\Component\HttpFoundation\Response as Response;
 
 class ProjectController extends AbstractController
 {
 
-    #[OA\Response(
-        response: 201,
-        description: 'Project is created',
-    )]
-    #[OA\Response(
-        response: 400,
-        description: 'Incorrect fields composition or type or project with such name already have been created.',
-    )]
-    #[OA\RequestBody(content: new Model(type: Project::class, groups: ["create_project"]))]
+    #[OA\Post(
+            path: '/api/create-project',
+            description: "Создание пользователя",
+            requestBody: new OA\RequestBody(
+                content: new OA\JsonContent(
+                    ref: new Model(type: Project::class, groups: ["create_project"]),
+                    example: '{
+                    "name": "project name",
+                    "customer": "customer name"
+                }')
+            )
+        ),
+        OA\Response(
+            response: 201,
+            description: 'Project is created.'),
+        OA\Response(
+            response: 400,
+            description: 'User isn\'t created'),
+    ]
     #[Route('/api/create-project', name: 'create_project', methods: ['POST'])]
     public function create (
         Request        $request,
         ProjectService $pjService
     ): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-        $errors = $pjService->createProject($data);
+        try {
+            $data = json_decode($request->getContent(), true);
+            $pjService->createProject($data);
 
-        return $this->json([
-            'message' => $errors <> "" ? $errors : 'Project was created successfully!'
-        ]);
+            return $this->json([
+                'message' => 'Project was created successfully!'
+            ], Response::HTTP_CREATED);
+        } catch (\Exception $exception) {
+            return $this->json([
+                'message' => $exception->getMessage()
+            ], $exception->getCode());
+        }
     }
 
     #[OA\Response(
