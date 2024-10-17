@@ -61,8 +61,8 @@ class ProjectController extends AbstractController
         }
     }
 
-    #[OA\Post(
-        path: '/api/create-project',
+    #[OA\Patch(
+        path: '/api/close-project',
         description: "Закрытие проекта",
         requestBody: new OA\RequestBody(
             content: new OA\JsonContent(
@@ -83,7 +83,7 @@ class ProjectController extends AbstractController
         response: 404,
         description: 'the project in\'t created',
     )]
-    #[Route('/api/close-project', name: 'close_project',methods: ['PUT'])]
+    #[Route('/api/close-project', name: 'close_project',methods: ['PATCH'])]
     public function close (
         Request        $request,
         ProjectService $pjService
@@ -104,7 +104,32 @@ class ProjectController extends AbstractController
         }
     }
 
-    #[Route('/api/projects/{projectId}/add_workers', name: 'add_workers', methods: ['PUT'])]
+    #[OA\Patch(
+        path: '/api/projects/{projectId}/add_workers',
+        description: "Добавление пользователей в проект",
+        requestBody: new OA\RequestBody(
+                content: new OA\JsonContent(
+                    required: ['data'],
+                    properties: [
+                        new OA\Property(
+                            property: 'workers', type: 'array', items: new OA\Items(type: 'integer')
+                        ),
+                    ],
+                    type: 'object',
+                    example: '{
+                        "workers": [1, 2, 3]}'
+                )
+        )
+    ),OA\Response(
+        response: 200,
+        description: 'Workers is added.',
+    ), OA\Response(
+        response: 400,
+        description: 'Workers already added, workers with passed id don\'t exist, \'workers\' is empty or isn\'t passed.',
+    ), OA\Response(
+        response: 404,
+        description: 'Some workers isn\'t found or project ID don\'t exist.',)]
+    #[Route('/api/projects/{projectId}/add_workers', name: 'add_workers', methods: ['PATCH'])]
     public function addWorkers(
         int $projectId,
         Request $request,
