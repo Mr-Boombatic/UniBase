@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\Project;
 use App\Entity\Worker;
 use http\Exception\InvalidArgumentException;
+use Symfony\Component\Config\Definition\Exception\Exception;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -58,9 +59,9 @@ class ProjectService
             ['name' => $name]);
 
         if ($pj == null)
-            return "Project with such name (" . $name . ") isn't exist.";
+            throw new Exception("Project with such name (" . $name . ") isn't exist.", 404);
         if ($pj->isClosed())
-            return $name . " already have been closed.";
+            throw new Exception($name . " already have been closed.", 400);
 
         $pj->setClosed();
         $this->entityManager->persist($pj);
@@ -72,7 +73,7 @@ class ProjectService
         $alreadAddedWorkers = [];
         foreach ($workers as $worker) {
             if ($pj->getWorkers()->contains($worker)) {
-                array_push($alreadAddedWorkers, $worker);
+                array_push($alreadAddedWorkers, $worker->getId());
                 continue;
             }
 
@@ -83,7 +84,7 @@ class ProjectService
         $this->entityManager->flush();
 
         if (count($alreadAddedWorkers) > 0) {
-            throw new \Exception("Workers have been added: " . implode(", ", $alreadAddedWorkers));
+            throw new \Exception("Workers with following ids have been added: " . implode(", ", $alreadAddedWorkers), 409);
         }
     }
 

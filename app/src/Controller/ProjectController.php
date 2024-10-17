@@ -18,7 +18,7 @@ class ProjectController extends AbstractController
 
     #[OA\Post(
             path: '/api/create-project',
-            description: "Создание пользователя",
+            description: "Создание проекта",
             requestBody: new OA\RequestBody(
                 content: new OA\JsonContent(
                     ref: new Model(type: Project::class, groups: ["create_project"]),
@@ -61,15 +61,28 @@ class ProjectController extends AbstractController
         }
     }
 
-    #[OA\Response(
+    #[OA\Post(
+        path: '/api/create-project',
+        description: "Закрытие проекта",
+        requestBody: new OA\RequestBody(
+            content: new OA\JsonContent(
+                ref: new Model(type: Project::class, groups: ["close_project"]),
+                example: '{
+                    "name": "project name"
+                }')
+        )
+    ),OA\Response(
         response: 200,
         description: 'Project is closed.',
-    )]
-    #[OA\Response(
+    ),
+    OA\Response(
         response: 400,
-        description: 'Project with name isn\'t created or the name isn\'t passed',
+        description: 'the name of project isn\'t passed',
+    ),
+    OA\Response(
+        response: 404,
+        description: 'the project in\'t created',
     )]
-    #[OA\RequestBody(content: new Model(type: Project::class, groups: ["close_project"]))]
     #[Route('/api/close-project', name: 'close_project',methods: ['PUT'])]
     public function close (
         Request        $request,
@@ -80,13 +93,15 @@ class ProjectController extends AbstractController
         if (!(array_key_exists('name', $data) && gettype($data['name']) === 'string')) {
             return $this->json([
                 'message' => "Type or name of parameter is wrong!. Parameter must have key 'name' and string type."
-            ]);
+            ], Response::HTTP_BAD_REQUEST);
         }
-        $errors = $pjService->closeProject($data['name']);
+        try {
+            $pjService->closeProject($data['name']);
 
-        return $this->json([
-            'message' => $errors <> "" ? $errors : 'Project was closed successfully!'
-        ]);
+            return $this->json(['message' => 'Project was closed successfully!'], Response::HTTP_OK);
+        } catch (\Exception $exception) {
+            return $this->json(['message' => $exception->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
     }
 
     #[Route('/api/projects/{projectId}/add_workers', name: 'add_workers', methods: ['PUT'])]
@@ -98,23 +113,33 @@ class ProjectController extends AbstractController
     ): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        if (!isset($data['workers']) && !is_array($data['workers'] && count($data['workers']) > 0)) {
-            return $this->json(['message' => "Json must have field 'workers' and at least one worker."], );
-        }
+
+        if (!isset($data['workers']))
+            return $this->json(['message' => "Attribute 'workers' isn't specified."], Response::HTTP_BAD_REQUEST);
+
+        if (!is_array($data['workers'] && count($data['workers']) > 0))
+            return $this->json(['message' => "Json must have field 'workers' and at least one worker."],Response::HTTP_BAD_REQUEST);
 
         try {
             $workers = $workerService->getWorkers($data['workers']);
             $pj = $pjService->getProject($projectId);
 
+            if (count($workers) === 0) {
+                $nonExistentWorkers = array_diff($data['workers'], array_map(function ($worker) {
+                    $worker->getId();
+                }, $workers));
+                return $this->json(['message' => "Some workers are not in the database. Ids: ". implode(',', $nonExistentWorkers)], Response::HTTP_NOT_FOUND);
+            }
+
             $pjService->assignWorkers($pj, $workers);
         } catch (\Exception $e) {
-            return $this->json(['message' => $e->getMessage()]);
+            return $this->json(['message' => $e->getMessage()], $e->getCode());
         }
 
         return $this->json([
             'message' => 'The workers (' . implode(", ", array_map(function ($worker) {
-                    return $worker->getFullname(); }, $workers))  . ' was added to the project (' . $pj->getName() . ') !'
-        ]);
+                    return $worker->getFullname(); }, $workers))  . ') was added to the project (' . $pj->getName() . ') !'
+        ], Response::HTTP_OK);
     }
 
     #[Route('/api/project/{projectId}/remove_workers', name: 'remove_workers', methods: ['PUT'])]
