@@ -84,25 +84,22 @@ class ProjectService
         $this->entityManager->flush();
 
         if (count($alreadAddedWorkers) > 0) {
-            throw new \Exception("Workers with following ids have been added: " . implode(", ", $alreadAddedWorkers), 409);
+            throw new \Exception("Workers with following ids already have been added: " . implode(", ", $alreadAddedWorkers), 409);
         }
     }
 
     public function getProject ($id)
     {
         $pj =  $this->entityManager->getRepository(Project::class)->findOneBy(['id' => $id]);
-        if ($pj <> null)
-            return $pj;
-        else
-            throw new \ErrorException("Project with such id does not exist.");
+        return $pj;
     }
 
     public function removeWorkers($pj, array $workers)
     {
-            $alreadyRemovedWorkers = [];
+            $outsidePj = [];
             foreach ($workers as $worker) {
                 if ($pj->getWorkers()->contains($worker)) {
-                    array_push($alreadyRemovedWorkers, $worker->getFullname());
+                    array_push($outsidePj, $worker->getFullname());
                     continue;
                 }
 
@@ -112,8 +109,8 @@ class ProjectService
             $this->entityManager->persist($pj);
             $this->entityManager->flush();
 
-            if (count($alreadyRemovedWorkers) > 0) {
-                throw new \Exception("Workers have been removed: " . implode(", ", $alreadyRemovedWorkers));
+            if (count($outsidePj) > 0) {
+                throw new \Exception("Workers already have been removed: " . implode(", ", $alreadyRemovedWorkers), 400);
             }
     }
 }

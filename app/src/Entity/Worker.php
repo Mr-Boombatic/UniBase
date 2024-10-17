@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: WorkerRepository::class)]
 class Worker
@@ -16,15 +17,19 @@ class Worker
     #[ORM\Column]
     private ?int $id = null;
 
+    #[Groups(['create_worker'])]
     #[ORM\Column(length: 255)]
     private ?string $fullname = null;
 
+    #[Groups(['create_worker'])]
     #[ORM\Column(length: 255)]
     private ?string $phonenumber = null;
 
+    #[Groups(['create_worker'])]
     #[ORM\Column(length: 255)]
     private ?string $email = null;
 
+    #[Groups(['create_worker'])]
     #[ORM\Column(length: 255)]
     private ?string $position = null;
 

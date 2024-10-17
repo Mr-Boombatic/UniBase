@@ -138,36 +138,36 @@ class ProjectController extends AbstractController
     ): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-
-        if (!isset($data['workers']))
-            return $this->json(['message' => "Attribute 'workers' isn't specified."], Response::HTTP_BAD_REQUEST);
-
-        if (!is_array($data['workers'] && count($data['workers']) > 0))
-            return $this->json(['message' => "Json must have field 'workers' and at least one worker."],Response::HTTP_BAD_REQUEST);
-
-        try {
-            $workers = $workerService->getWorkers($data['workers']);
-            $pj = $pjService->getProject($projectId);
-
-            if (count($workers) === 0) {
-                $nonExistentWorkers = array_diff($data['workers'], array_map(function ($worker) {
-                    $worker->getId();
-                }, $workers));
-                return $this->json(['message' => "Some workers are not in the database. Ids: ". implode(',', $nonExistentWorkers)], Response::HTTP_NOT_FOUND);
-            }
-
-            $pjService->assignWorkers($pj, $workers);
-        } catch (\Exception $e) {
-            return $this->json(['message' => $e->getMessage()], $e->getCode());
-        }
-
-        return $this->json([
-            'message' => 'The workers (' . implode(", ", array_map(function ($worker) {
-                    return $worker->getFullname(); }, $workers))  . ') was added to the project (' . $pj->getName() . ') !'
-        ], Response::HTTP_OK);
+        return $this->changeWorkerCollection($projectId, $data, 'add', $pjService, $workerService);
     }
 
-    #[Route('/api/project/{projectId}/remove_workers', name: 'remove_workers', methods: ['PUT'])]
+
+    #[OA\Patch(
+        path: '/api/project/{projectId}/remove_workers',
+        description: "Удаление пользователей из проекта",
+        requestBody: new OA\RequestBody(
+            content: new OA\JsonContent(
+                required: ['data'],
+                properties: [
+                    new OA\Property(
+                        property: 'workers', type: 'array', items: new OA\Items(type: 'integer')
+                    ),
+                ],
+                type: 'object',
+                example: '{
+                        "workers": [1, 2, 3]}'
+            )
+        )
+    ),OA\Response(
+        response: 200,
+        description: 'Workers is removed.',
+    ), OA\Response(
+        response: 400,
+        description: 'No workers is in specified project, workers with passed id don\'t exist, \'workers\' is empty or isn\'t passed.',
+    ), OA\Response(
+        response: 404,
+        description: 'Some workers isn\'t found or project ID don\'t exist.',)]
+    #[Route('/api/projects/{projectId}/remove_workers', name: 'remove_workers', methods: ['PATCH'])]
     public function removeWorker(
         int $projectId,
         Request $request,
@@ -176,22 +176,48 @@ class ProjectController extends AbstractController
     ): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        if (!isset($data['workers']) && !is_array($data['workers'] && count($data['workers']) > 0)) {
-            return $this->json(['message' => "Json must have field 'workers' and at least one worker."], );
-        }
+        return $this->changeWorkerCollection($projectId, $data, 'remove', $pjService, $workerService);
+    }
+
+    private function changeWorkerCollection(int $projectId, array $data, string $mode, ProjectService $pjSrv, WorkerService $workerSrv): JsonResponse
+    {
+
+        if (!isset($data['workers']))
+            return $this->json(['message' => "Attribute 'workers' isn't specified."], Response::HTTP_BAD_REQUEST);
+
+        if (!is_array($data['workers']) || count($data['workers']) == 0)
+            return $this->json(['message' => "Json must have field 'workers' and at least one worker."],Response::HTTP_BAD_REQUEST);
 
         try {
-            $workers = $workerService->getWorkers($data['workers']);
-            $pj = $pjService->getProject($projectId);
+            $workers = $workerSrv->getWorkers($data['workers']);
+            $pj = $pjSrv->getProject($projectId);
 
-            $pjService->removeWorkers($pj, $workers);
+            if ($pj === null)
+                return $this->json(['message' => "Project (id: {$projectId}) is not found."], Response::HTTP_BAD_REQUEST);
+
+            if (count($workers) === 0) {
+                $nonExistentWorkers = array_diff($data['workers'], array_map(function ($worker) {
+                    $worker->getId();
+                }, $workers));
+                return $this->json(['message' => "Some workers are not in the database. Ids: " . implode(',', $nonExistentWorkers)], Response::HTTP_NOT_FOUND);
+            }
+
+            switch ($mode) {
+                case 'add':
+                    $pjSrv->assignWorkers($pj, $workers);
+                    break;
+
+                case 'remove':
+                    $pjSrv->removeWorkers($pj, $workers);
+                    break;
+            }
         } catch (\Exception $e) {
-            return $this->json(['message' => $e->getMessage()]);
+            return $this->json(['message' => $e->getMessage()], $e->getCode());
         }
 
         return $this->json([
             'message' => 'The workers (' . implode(", ", array_map(function ($worker) {
-                    return $worker->getFullname(); }, $workers))  . ' was removed from the project (' . $pj->getName() . ') !'
-        ]);
+                    return $worker->getFullname(); }, $workers))  . ") was {$mode} to the project (" . $pj->getName() . ') !'
+        ], Response::HTTP_OK);
     }
 }
