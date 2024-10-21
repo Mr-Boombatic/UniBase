@@ -6,6 +6,8 @@ use App\Entity\Project;
 use App\Entity\Worker;
 use http\Exception\InvalidArgumentException;
 use Symfony\Component\Config\Definition\Exception\Exception;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response as Response;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -68,12 +70,19 @@ class ProjectService
         $this->entityManager->flush();
     }
 
+    /**
+     * @param Project $pj
+     * @param array $workers
+     * @return void
+     * @throws \Exception
+     */
     public function assignWorkers(Project $pj, array $workers)
     {
-        $alreadAddedWorkers = [];
+        $alreadyAddedWorkers = [];
+        $workersInProject = $pj->getWorkers();
         foreach ($workers as $worker) {
-            if ($pj->getWorkers()->contains($worker)) {
-                array_push($alreadAddedWorkers, $worker->getId());
+            if ($workersInProject->contains($worker)) {
+                array_push($alreadyAddedWorkers, $worker->getId());
                 continue;
             }
 
@@ -83,34 +92,49 @@ class ProjectService
         $this->entityManager->persist($pj);
         $this->entityManager->flush();
 
-        if (count($alreadAddedWorkers) > 0) {
-            throw new \Exception("Workers with following ids already have been added: " . implode(", ", $alreadAddedWorkers), 409);
+        if (count($alreadyAddedWorkers) > 0) {
+            throw new \Exception("Workers with following ids already have been added: " . implode(", ", $alreadyAddedWorkers), 409);
         }
     }
 
-    public function getProject ($id)
+    /**
+     * @param int $id
+     * @throws \InvalidArgumentException
+     * @return Project
+     */
+    public function getProject (int $id): Project
     {
         $pj =  $this->entityManager->getRepository(Project::class)->findOneBy(['id' => $id]);
+        if ($pj == null) {
+            throw new \InvalidArgumentException("Project (id: {$id}) is not found.", Response::HTTP_BAD_REQUEST);
+        }
+
         return $pj;
     }
 
-    public function removeWorkers($pj, array $workers)
+    /**
+     * @param Project $pj
+     * @param array $workers
+     * @return void
+     * @throws \Exception
+     */
+    public function removeWorkers(Project $pj, array $workers): void
     {
-            $outsidePj = [];
-            foreach ($workers as $worker) {
-                if ($pj->getWorkers()->contains($worker)) {
-                    array_push($outsidePj, $worker->getFullname());
-                    continue;
-                }
-
-                $pj->removeWorker($worker);
+        $outsidePj = [];
+        foreach ($workers as $worker) {
+            if (!$pj->getWorkers()->contains($worker)) {
+                array_push($outsidePj, $worker->getFullname());
+                continue;
             }
 
-            $this->entityManager->persist($pj);
-            $this->entityManager->flush();
+            $pj->removeWorker($worker);
+        }
 
-            if (count($outsidePj) > 0) {
-                throw new \Exception("Workers already have been removed: " . implode(", ", $alreadyRemovedWorkers), 400);
-            }
+        $this->entityManager->persist($pj);
+        $this->entityManager->flush();
+
+        if (count($outsidePj) > 0) {
+            throw new \Exception("These workers are not in the project anyway: " . implode(", ", $outsidePj), 400);
+        }
     }
 }

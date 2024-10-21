@@ -138,7 +138,23 @@ class ProjectController extends AbstractController
     ): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        return $this->changeWorkerCollection($projectId, $data, 'add', $pjService, $workerService);
+        $response = $this->validateAttributeWorkers($data);
+        if ($response)
+            return $response;
+
+        try {
+            $workers = $workerService->getWorkers($data['workers']);
+            $pj = $pjService->getProject($projectId);
+
+            $pjService->assignWorkers($pj, $workers);
+        } catch (\Exception $e) {
+            return $this->json(['message' => $e->getMessage()], $e->getCode());
+        }
+
+        return $this->json([
+            'message' => 'The workers (' . implode(", ", array_map(function ($worker) {
+                    return $worker->getFullname(); }, $workers))  . ") was added to the project (" . $pj->getName() . ') !'
+        ], Response::HTTP_OK);
     }
 
 
@@ -176,48 +192,37 @@ class ProjectController extends AbstractController
     ): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        return $this->changeWorkerCollection($projectId, $data, 'remove', $pjService, $workerService);
-    }
-
-    private function changeWorkerCollection(int $projectId, array $data, string $mode, ProjectService $pjSrv, WorkerService $workerSrv): JsonResponse
-    {
-
-        if (!isset($data['workers']))
-            return $this->json(['message' => "Attribute 'workers' isn't specified."], Response::HTTP_BAD_REQUEST);
-
-        if (!is_array($data['workers']) || count($data['workers']) == 0)
-            return $this->json(['message' => "Json must have field 'workers' and at least one worker."],Response::HTTP_BAD_REQUEST);
+        $response = $this->validateAttributeWorkers($data);
+        if ($response)
+            return $response;
 
         try {
-            $workers = $workerSrv->getWorkers($data['workers']);
-            $pj = $pjSrv->getProject($projectId);
+            $workers = $workerService->getWorkers($data['workers']);
+            $pj = $pjService->getProject($projectId);
 
-            if ($pj === null)
-                return $this->json(['message' => "Project (id: {$projectId}) is not found."], Response::HTTP_BAD_REQUEST);
-
-            if (count($workers) === 0) {
-                $nonExistentWorkers = array_diff($data['workers'], array_map(function ($worker) {
-                    $worker->getId();
-                }, $workers));
-                return $this->json(['message' => "Some workers are not in the database. Ids: " . implode(',', $nonExistentWorkers)], Response::HTTP_NOT_FOUND);
-            }
-
-            switch ($mode) {
-                case 'add':
-                    $pjSrv->assignWorkers($pj, $workers);
-                    break;
-
-                case 'remove':
-                    $pjSrv->removeWorkers($pj, $workers);
-                    break;
-            }
+            $pjService->removeWorkers($pj, $workers);
         } catch (\Exception $e) {
             return $this->json(['message' => $e->getMessage()], $e->getCode());
         }
 
         return $this->json([
             'message' => 'The workers (' . implode(", ", array_map(function ($worker) {
-                    return $worker->getFullname(); }, $workers))  . ") was {$mode} to the project (" . $pj->getName() . ') !'
+                    return $worker->getFullname(); }, $workers))  . ") was removed to the project (" . $pj->getName() . ') !'
         ], Response::HTTP_OK);
+    }
+
+    /**
+     * @param array $data encoded json data
+     * @return JsonResponse|null
+     */
+    private function validateAttributeWorkers(array $data): ?JsonResponse
+    {
+        if (!isset($data['workers']))
+            return $this->json(['message' => "Attribute 'workers' isn't specified."], Response::HTTP_BAD_REQUEST);
+
+        if (!is_array($data['workers']) || count($data['workers']) == 0)
+            return $this->json(['message' => "Json must have field 'workers' and at least one worker."],Response::HTTP_BAD_REQUEST);
+
+        return null;
     }
 }

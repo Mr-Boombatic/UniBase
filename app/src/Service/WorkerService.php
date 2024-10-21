@@ -4,7 +4,9 @@ namespace App\Service;
 
 use App\Entity\Project;
 use App\Entity\Worker;
+use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Exception\ConstraintViolationException;
+use Symfony\Component\HttpFoundation\Response as Response;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -28,6 +30,11 @@ class WorkerService
         $this->entityManager = $entityManager;
     }
 
+    /**
+     * @param $data
+     * @return string|void
+     * @throws \Exception
+     */
     public function createWorker ($data)
     {
         $mandatoryFields = ['fullname', 'email', 'phonenumber', 'position', 'birthdate'];
@@ -47,27 +54,40 @@ class WorkerService
             if (Position::tryFrom($data["position"]) !== null)
                 $newWorker->setPosition($data["position"]);
             else
-                return "This position isn't exist.";
+                throw new \Exception("This position isn't exist.", Response::HTTP_NOT_FOUND);
         } catch (\Exception $e) {
-            return 'Caught exception: ' . $e->getMessage() . "\n";
+            throw new \Exception('Caught exception: ' . $e->getMessage() . "\n", Response::HTTP_BAD_REQUEST);
         }
-
-        $errors = $this->validator->validate($newWorker);
-        if (count($errors) > 0) {
-            return (string)$errors;
-        } else {
+//
+//        $errors = $this->validator->validate($newWorker);
+//        if (count($errors) > 0) {
+//            return (string)$errors;
+//        } else {
             try {
                 $this->entityManager->persist($newWorker);
                 $this->entityManager->flush();
             } catch (\Exception $exception) {
-                return 'Caught exception: ' . $exception->getMessage() . "\n";
+                throw new \Exception('Caught exception: ' . $exception->getMessage() . "\n", Response::HTTP_INTERNAL_SERVER_ERROR);
             }
-        }
+//        }
     }
 
-    public function getWorkers ($ids): array
+    /**
+     * @param array $ids
+     * @return Worker[]
+     * @throws Exception
+     */
+    public function getWorkers (array $ids): array
     {
         $workers = $this->entityManager->getRepository(Worker::class)->findBy(array('id' => $ids));
+
+        if (count($ids) != count($workers)) {
+            $nonExistentWorkers = array_diff($ids, array_map(function ($worker) {
+                    return $worker->getId();
+                }, $workers));
+            throw new Exception("Some workers are not in the database. Ids: " . implode(',', $nonExistentWorkers), Response::HTTP_NOT_FOUND);
+        }
+
         return $workers;
     }
 }
