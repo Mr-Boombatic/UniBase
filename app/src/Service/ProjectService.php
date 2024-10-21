@@ -3,10 +3,7 @@
 namespace App\Service;
 
 use App\Entity\Project;
-use App\Entity\Worker;
-use http\Exception\InvalidArgumentException;
 use Symfony\Component\Config\Definition\Exception\Exception;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response as Response;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Doctrine\ORM\EntityManagerInterface;
@@ -25,7 +22,12 @@ class ProjectService
         $this->entityManager = $entityManager;
     }
 
-    public function createProject ($data)
+    /**
+     * @param $data
+     * @return void
+     * @throws \Exception
+     */
+    public function createProject($data): void
     {
         $newPj = new Project();
 
@@ -55,7 +57,11 @@ class ProjectService
         }
     }
 
-    public function closeProject ($name)
+    /**
+     * @param $name
+     * @return void
+     */
+    public function closeProject($name): void
     {
         $pj = $this->entityManager->getRepository(Project::class)->findOneBy(
             ['name' => $name]);
@@ -76,7 +82,7 @@ class ProjectService
      * @return void
      * @throws \Exception
      */
-    public function assignWorkers(Project $pj, array $workers)
+    public function assignWorkers(Project $pj, array $workers): void
     {
         $alreadyAddedWorkers = [];
         $workersInProject = $pj->getWorkers();
@@ -102,7 +108,7 @@ class ProjectService
      * @throws \InvalidArgumentException
      * @return Project
      */
-    public function getProject (int $id): Project
+    public function getProject(int $id): Project
     {
         $pj =  $this->entityManager->getRepository(Project::class)->findOneBy(['id' => $id]);
         if ($pj == null) {

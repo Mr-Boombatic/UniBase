@@ -2,47 +2,39 @@
 
 namespace App\Service;
 
-use App\Entity\Project;
 use App\Entity\Worker;
-use Doctrine\DBAL\Exception;
-use Doctrine\DBAL\Exception\ConstraintViolationException;
 use Symfony\Component\HttpFoundation\Response as Response;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
-enum Position: string {
-    case Developer = 'Программист';
-    case DevOps = 'DevOps';
-    case Administrator = 'Администратор';
-    case Designer = 'Дизайнер';
-}
 class WorkerService
 {
-    private ValidatorInterface $validator;
     private EntityManagerInterface $entityManager;
 
     public function __construct (
-        ValidatorInterface     $validator,
         EntityManagerInterface $entityManager
     )
     {
-        $this->validator = $validator;
         $this->entityManager = $entityManager;
     }
 
     /**
      * @param $data
-     * @return string|void
+     * @return void
      * @throws \Exception
      */
-    public function createWorker ($data)
+    public function createWorker($data): void
     {
         $mandatoryFields = ['fullname', 'email', 'phonenumber', 'position', 'birthdate'];
+        $undefinedFields = [];
         foreach ($mandatoryFields as $field) {
             if (!isset($data[$field])) {
-                return "field " . $field . " is undefined.";
+                array_push($undefinedFields, $field);
             }
         }
+
+        if (count($undefinedFields) <> 0)
+            throw new \Exception("Fields (" .implode(', ', $undefinedFields). ") are undefined", Response::HTTP_BAD_REQUEST);
 
         $newWorker = new Worker();
         try {
@@ -51,25 +43,20 @@ class WorkerService
             $newWorker->setPhonenumber($data["phonenumber"]);
             $newWorker->setBirthdate(new \DateTimeImmutable($data["birthdate"]));
 
-            if (Position::tryFrom($data["position"]) !== null)
+            if (\App\Entity\Enums\Position::tryFrom($data["position"]) !== null)
                 $newWorker->setPosition($data["position"]);
             else
                 throw new \Exception("This position isn't exist.", Response::HTTP_NOT_FOUND);
         } catch (\Exception $e) {
             throw new \Exception('Caught exception: ' . $e->getMessage() . "\n", Response::HTTP_BAD_REQUEST);
         }
-//
-//        $errors = $this->validator->validate($newWorker);
-//        if (count($errors) > 0) {
-//            return (string)$errors;
-//        } else {
-            try {
-                $this->entityManager->persist($newWorker);
-                $this->entityManager->flush();
-            } catch (\Exception $exception) {
-                throw new \Exception('Caught exception: ' . $exception->getMessage() . "\n", Response::HTTP_INTERNAL_SERVER_ERROR);
-            }
-//        }
+
+        try {
+            $this->entityManager->persist($newWorker);
+            $this->entityManager->flush();
+        } catch (\Exception $exception) {
+            throw new \Exception('Caught exception: ' . $exception->getMessage() . "\n", Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**

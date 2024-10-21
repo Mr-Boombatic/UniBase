@@ -44,8 +44,8 @@ class WorkerController extends AbstractController
         $data = json_decode($request->getContent(), true);
         try {
             $workerService->createWorker($data);
-        } catch (Exception $exception) {
-            return new JsonResponse(["message" => $exception->getMessage()], $exception->getCode());
+        } catch(\Exception $e) {
+            return $this->json(["message" => $e->getMessage()], $e->getCode());
         }
 
         return $this->json(['New worker was created successfully!'], Response::HTTP_OK);
