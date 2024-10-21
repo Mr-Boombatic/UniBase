@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Service\WorkerService;
+use Doctrine\DBAL\Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -10,6 +11,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use OpenApi\Attributes as OA;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use App\Entity\Worker;
+use \Symfony\Component\HttpFoundation\Response;
 
 class WorkerController extends AbstractController
 {
@@ -40,10 +42,12 @@ class WorkerController extends AbstractController
     ): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        $errors = $workerService->createWorker($data);
+        try {
+            $workerService->createWorker($data);
+        } catch (Exception $exception) {
+            return new JsonResponse(["message" => $exception->getMessage()], $exception->getCode());
+        }
 
-        return $this->json([
-            'message' => $errors <> ""  ? $errors : 'New worker was created successfully!'
-        ]);
+        return $this->json(['New worker was created successfully!'], Response::HTTP_OK);
     }
 }
